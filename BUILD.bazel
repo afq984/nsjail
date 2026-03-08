@@ -1,0 +1,155 @@
+load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("@rules_bison//bison:bison.bzl", "bison")
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_flex//flex:flex.bzl", "flex")
+
+# --------------------------------------------------------------------------
+# Protobuf
+# --------------------------------------------------------------------------
+
+proto_library(
+    name = "config_proto",
+    srcs = ["config.proto"],
+)
+
+cc_proto_library(
+    name = "config_cc_proto",
+    deps = [":config_proto"],
+)
+
+# --------------------------------------------------------------------------
+# Kafel — seccomp-bpf policy compiler (git submodule)
+#
+# The kafel source files contain hardcoded output path directives
+# (%option outfile/header-file in lexer.l, %output/%defines in parser.y)
+# that override the command-line flags rules_flex/rules_bison pass.
+# We strip those directives before feeding the files to the stock rules.
+# --------------------------------------------------------------------------
+
+genrule(
+    name = "lexer_patched",
+    srcs = ["kafel/src/lexer.l"],
+    outs = ["lexer_patched.l"],
+    cmd = "sed '/^%option outfile=.*header-file=/d' $< > $@",
+)
+
+flex(
+    name = "lexer",
+    src = ":lexer_patched",
+)
+
+genrule(
+    name = "parser_patched",
+    srcs = ["kafel/src/parser.y"],
+    outs = ["parser_patched.y"],
+    cmd = "sed -e '/^%output /d' -e '/^%defines /d' $< > $@",
+)
+
+bison(
+    name = "parser",
+    src = ":parser_patched",
+)
+
+cc_library(
+    name = "kafel",
+    srcs = [
+        "kafel/src/codegen.c",
+        "kafel/src/context.c",
+        "kafel/src/expression.c",
+        "kafel/src/includes.c",
+        "kafel/src/kafel.c",
+        "kafel/src/parser_types.c",
+        "kafel/src/policy.c",
+        "kafel/src/range_rules.c",
+        "kafel/src/syscall.c",
+        "kafel/src/syscalls/aarch64_syscalls.c",
+        "kafel/src/syscalls/amd64_syscalls.c",
+        "kafel/src/syscalls/arm_syscalls.c",
+        "kafel/src/syscalls/i386_syscalls.c",
+        "kafel/src/syscalls/m68k_syscalls.c",
+        "kafel/src/syscalls/mips64_syscalls.c",
+        "kafel/src/syscalls/mipso32_syscalls.c",
+        "kafel/src/syscalls/riscv64_syscalls.c",
+        ":lexer",
+        ":parser",
+    ] + glob(["kafel/src/**/*.h"]),
+    hdrs = ["kafel/include/kafel.h"],
+    copts = [
+        "-Ikafel/src",
+        "-std=gnu11",
+        "-fvisibility=hidden",
+        "-Wno-unused",
+        "-Wno-unused-parameter",
+        "-Wno-error",
+    ],
+    includes = ["kafel/include"],
+)
+
+# --------------------------------------------------------------------------
+# nsjail
+# --------------------------------------------------------------------------
+
+cc_binary(
+    name = "nsjail",
+    srcs = [
+        "caps.cc",
+        "caps.h",
+        "cgroup.cc",
+        "cgroup.h",
+        "cgroup2.cc",
+        "cgroup2.h",
+        "cmdline.cc",
+        "cmdline.h",
+        "config.cc",
+        "config.h",
+        "contain.cc",
+        "contain.h",
+        "cpu.cc",
+        "cpu.h",
+        "logs.cc",
+        "logs.h",
+        "macros.h",
+        "mnt.cc",
+        "mnt.h",
+        "mnt_legacy.cc",
+        "mnt_legacy.h",
+        "mnt_newapi.cc",
+        "mnt_newapi.h",
+        "net.cc",
+        "net.h",
+        "nsjail.cc",
+        "nsjail.h",
+        "pid.cc",
+        "pid.h",
+        "sandbox.cc",
+        "sandbox.h",
+        "subproc.cc",
+        "subproc.h",
+        "user.cc",
+        "user.h",
+        "util.cc",
+        "util.h",
+        "uts.cc",
+        "uts.h",
+    ],
+    copts = [
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-Wformat",
+        "-Wformat-security",
+        "-Wno-format-nonliteral",
+        "-Wno-unused",
+        "-Wno-unused-parameter",
+    ],
+    linkopts = [
+        "-lpthread",
+    ],
+    deps = [
+        ":config_cc_proto",
+        ":kafel",
+        "@protobuf//:protobuf",
+    ],
+)

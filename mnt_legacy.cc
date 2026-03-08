@@ -45,6 +45,9 @@ namespace legacy {
 #if !defined(MS_LAZYTIME)
 #define MS_LAZYTIME (1 << 25)
 #endif
+#if !defined(MS_NOSYMFOLLOW)
+#define MS_NOSYMFOLLOW 256
+#endif
 #if !defined(ST_NOSYMFOLLOW)
 #define ST_NOSYMFOLLOW 8192
 #endif

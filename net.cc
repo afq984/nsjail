@@ -54,6 +54,7 @@ namespace net {
 
 #define IFACE_NAME "vs"
 
+#ifdef NSJAIL_WITH_LIBNL3
 #include <netlink/route/link.h>
 #include <netlink/route/link/macvlan.h>
 
@@ -136,6 +137,7 @@ static bool moveToNs(
 	rtnl_link_put(orig_link);
 	return true;
 }
+#endif /* NSJAIL_WITH_LIBNL3 */
 
 static bool spawnPasta(nsj_t* nsj, int pid) {
 	LOG_D("Spawning pasta for pid=%d", pid);
@@ -319,6 +321,7 @@ bool initParent(nsj_t* nsj, int pid) {
 	if (!nsj->njc.clone_newnet()) {
 		return true;
 	}
+#ifdef NSJAIL_WITH_LIBNL3
 	struct nl_sock* sk = nl_socket_alloc();
 	if (!sk) {
 		LOG_E("Could not allocate socket with nl_socket_alloc()");
@@ -354,6 +357,7 @@ bool initParent(nsj_t* nsj, int pid) {
 
 	nl_cache_free(link_cache);
 	nl_socket_free(sk);
+#endif /* NSJAIL_WITH_LIBNL3 */
 	return true;
 }
 

@@ -1,0 +1,33 @@
+module(
+    name = "nsjail",
+    version = "0.0.1",
+)
+
+# --- Toolchain -----------------------------------------------------------
+
+bazel_dep(name = "toolchains_chromium", version = "0.0.1", dev_dependency = True)
+git_override(
+    module_name = "toolchains_chromium",
+    remote = "https://github.com/google/toolchains_chromium",
+    commit = "1cc2c49e1e120e42349ad643dc3e09cda2f2fbcb",
+)
+
+chromium = use_extension("@toolchains_chromium//:extensions.bzl", "chromium", dev_dependency = True)
+chromium.toolchain(name = "chromium_toolchain")
+use_repo(chromium, "chromium_toolchain")
+register_toolchains("@chromium_toolchain//:all", dev_dependency = True)
+
+# --- Build rules ----------------------------------------------------------
+
+bazel_dep(name = "rules_cc", version = "0.2.14")
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
+
+# Protobuf
+bazel_dep(name = "protobuf", version = "33.4")
+bazel_dep(name = "rules_proto", version = "7.1.0")
+
+# Flex / Bison (for kafel)
+bazel_dep(name = "rules_flex", version = "0.4")
+bazel_dep(name = "rules_bison", version = "0.4")
+bazel_dep(name = "rules_m4", version = "0.3")
