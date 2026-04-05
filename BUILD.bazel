@@ -169,5 +169,6 @@ cc_binary(
     name = "nsjail",
     srcs = ["nsjail.cc"],
     copts = _NSJAIL_COPTS,
+    visibility = ["//visibility:public"],
     deps = [":nsjail_lib"],
 )
